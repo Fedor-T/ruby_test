@@ -1,52 +1,49 @@
-require 'ffi'
-require 'v8'
+require 'benchmark'
 
-def generate_arr
-  arr = []
-  10000.times do
-	arr << rand(1000000)
+module Test
+  include Benchmark
+
+  def self.benchmark tasks
+    ::Benchmark.benchmark CAPTION, 7, FORMAT, ">total:", ">avg:" do |benchmark|
+      common_array = random_array
+      tasks.inject nil do |result, (name, task)|
+        current_result = nil
+        array = common_array.dup
+        benchmark.report name do
+          current_result = task.call array
+        end
+        raise [current_result, result].inspect if result && result != current_result
+        current_result
+      end
+    end
   end
-  arr
 end
-def bubble arr, size
-  size.times do |i|
-	size.times do |j|
-	  if arr[i] > arr[j]
-		arr[i], arr[j] = arr[j], arr[i]
-	  end
-	end
+
+def random_array length = 10 ** 6
+  [].tap do |array|
+    length.times do
+      array << rand(10 ** 6)
+    end
   end
 end
 
-module Sort
-  path = File.expand_path '..', __FILE__
-  extend FFI::Library
-  ffi_lib %{#{path}/libsort.so}
-  attach_function :sort, [:pointer, :int], :void
-  attach_function :bubble, [:pointer, :int], :void
-end
+require_relative 'js_bubble_sort'
+js_bubble_sort = JSBubbleSort.new
 
-arr = generate_arr
+require_relative 'c_bubble_sort'
 
-ptr = FFI::MemoryPointer.new 10000*4
-ptr.write_array_of_int arr
-lib = Sort
-t = Time.now
-lib.bubble(ptr, arr.size)
-puts %{c: #{(Time.now - t)} }
+require_relative 'bubble_sort'
 
-arr = generate_arr
+algorithms = {
+  js: proc{ |array|
+    js_bubble_sort.bubble_sort array
+  },
+  c: proc{ |array|
+    CBubbleSort.bubble_sort array
+  },
+  ruby: proc{ |array|
+    array.fair_bubble_sort!
+  }
+}
 
-t = Time.now
-bubble arr, arr.size
-puts %{ruby: #{(Time.now - t)} }
-
-arr = generate_arr
-
-V8::Context.new do |cont|
-  cont['arr'] = arr
-  cont.load("bubble.js")
-  t = Time.now
-  cont.eval("bubble(arr, arr.length)")
-  puts %{js: #{Time.now - t}}
-end
+Test.benchmark algorithms
