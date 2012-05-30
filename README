@@ -1,6 +1,8 @@
 compile shared lib in gcc:
 make
 
+bundle install
+
 run:
 
 ruby test.rb
