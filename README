@@ -1,5 +1,6 @@
 compile shared lib in gcc:
+make
 
-gcc -c -fPIC test.c -std=c99
+run:
 
-gcc -shared -o libsort.so test.o
+ruby test.rb
