@@ -1,0 +1,5 @@
+compile shared lib in gcc:
+
+gcc -c -fPIC test.c -std=c99
+
+gcc -shared -o libsort.so test.o
